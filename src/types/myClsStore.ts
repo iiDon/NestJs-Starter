@@ -1,6 +1,6 @@
 import { ClsStore } from 'nestjs-cls';
-import { JWTPayload } from './auth.type';
+import { User } from '@prisma/client';
 
 export interface MyClsStore extends ClsStore {
-  user: JWTPayload | null;
+  user: Omit<User, 'password'>;
 }

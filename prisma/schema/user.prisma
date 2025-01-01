@@ -1,6 +1,17 @@
 model User {
-    id       Int     @id @default(autoincrement())
-    email    String  @unique
+    id       Int       @id @default(autoincrement())
+    email    String    @unique
     password String
     name     String?
+    Session  Session[]
+}
+
+model Session {
+    id        Int      @id @default(autoincrement())
+    token     String   @unique
+    expiresAt DateTime
+    userId    Int
+    user      User     @relation(fields: [userId], references: [id])
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }

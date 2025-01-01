@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import config from './config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -15,19 +15,12 @@ async function bootstrap() {
   // enable cors for the frontend
   app.enableCors({
     origin: process.env.ENV === 'development' ? '*' : [], // allow all origins in development
+    credentials: true,
   });
 
   // enable DTOs validation for all routes
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      disableErrorMessages: false,
-      validateCustomDecorators: true,
-      transformOptions: { enableImplicitConversion: true },
-    }),
-  );
+  app.useGlobalPipes(config.globalPipes);
+
   await app.listen(4444);
 }
 bootstrap();

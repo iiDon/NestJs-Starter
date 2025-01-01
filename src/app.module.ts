@@ -1,35 +1,41 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import {
-  ThrottlerModule as RateLimiter,
-  ThrottlerGuard,
-} from '@nestjs/throttler';
-import { ClsModule } from 'nestjs-cls';
+import * as cookieParser from 'cookie-parser';
+import { ThrottlerModule as RateLimiter, ThrottlerGuard } from '@nestjs/throttler';
 import { config } from './config';
 import { UserModule } from './resources/user/user.module';
 import { AuthModule } from './resources/auth/auth.module';
 import { PrismaModule } from './resources/prisma/prisma.module';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { GlobalExceptionFilter } from './filters/global-exception.filter';
+import { GlobalClsModule } from './resources/cls/cls.module';
 
 @Module({
   imports: [
-    // Enable .env file for the entire application
+    // .env file configuration
     ConfigModule.forRoot(config.dotEnv),
-    // Enable rate limiting for the entire application
+    // Rate limiter configuration
     RateLimiter.forRoot(config.rateLimiter),
-    // Enable cls for the entire application
-    ClsModule.forRoot(config.cls),
-    // Import AuthModule and UserModule
+    // Global modules
+    GlobalClsModule,
     PrismaModule,
     AuthModule,
     UserModule,
   ],
-  controllers: [], // Remove AuthModule and UserModule from here
+  controllers: [],
   providers: [
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptionFilter,
+    },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(cookieParser()).forRoutes('*');
+  }
+}

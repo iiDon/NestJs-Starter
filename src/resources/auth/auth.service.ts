@@ -1,57 +1,44 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
-import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { throwError } from 'src/utils/throwError';
+import { SessionService } from './session.service';
+import { RegisterDto } from '../user/dto/register.dto';
+import { LoginDto } from '../user/dto/login.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UserService,
-    private jwtService: JwtService,
+    private readonly sessionService: SessionService,
   ) {}
 
-  async register(email: string, password: string) {
-    try {
-      const hash = await this.hashPassword(password);
-      const user = await this.usersService.create(email, hash);
-      const payload = { email: user.email, sub: user.id };
-      return {
-        token: this.jwtService.sign(payload),
-      };
-    } catch (error) {
-      throwError(error);
-    }
+  async register({ email, password }: RegisterDto) {
+    const hash = await this.hashPassword(password);
+    const user = await this.usersService.create(email, hash);
+    return this.sessionService.createSession(user.id);
   }
 
-  async login(email: string, password: string) {
-    try {
-      const user = await this.usersService.findOne(email);
-      await this.verifyPassword(password, user.password);
-
-      return {
-        token: this.jwtService.sign({ email: user.email, sub: user.id }),
-      };
-    } catch (error) {
-      throwError(error);
-    }
+  async login({ email, password }: LoginDto) {
+    const user = await this.usersService.findOne(email);
+    await this.verifyPassword(password, user.password);
+    return this.sessionService.createSession(user.id);
   }
 
-  private hashPassword(password: string) {
-    return argon2.hash(password);
+  async logout(token: string) {
+    return this.sessionService.deleteSession(token);
+  }
+
+  private async hashPassword(password: string) {
+    return await argon2.hash(password);
   }
 
   private async verifyPassword(password: string, hash: string) {
-    try {
-      const valid = await argon2.verify(hash, password);
-      console.log(valid);
-      if (!valid) {
-        throw new UnauthorizedException('Invalid Credentials');
-      }
+    const isValid = await argon2.verify(hash, password);
 
-      return valid;
-    } catch (error) {
-      throwError(error);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid Credentials');
     }
+
+    return true;
   }
 }
