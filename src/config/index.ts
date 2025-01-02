@@ -1,4 +1,3 @@
-import { AuthGuard } from 'src/guards/auth.guard';
 import { ClsConfigService } from '../resources/cls/cls.service';
 import { cookiesConfig } from './cookies';
 import { DotEnvConfig } from './dotenv';
@@ -11,7 +10,6 @@ export const config = {
   rateLimiter: RateLimiterConfig,
   cookies: cookiesConfig,
   globalPipes: globalPipes,
-  globalGuards: [AuthGuard],
 };
 
 export default config;
