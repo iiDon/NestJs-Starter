@@ -4,7 +4,7 @@ import { LoginDto } from '../user/dto/login.dto';
 import { Response, Request } from 'express';
 import { SessionService } from './session.service';
 import { RegisterDto } from '../user/dto/register.dto';
-import { AuthGuard } from 'src/guards/auth.guard';
+import { AuthRoleGuard } from 'src/guards/auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -27,7 +27,7 @@ export class AuthController {
     return { success: true };
   }
 
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthRoleGuard([]))
   @Post('logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies['session_id'];

@@ -1,33 +1,58 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  UnauthorizedException,
+  Type,
+  mixin,
+} from '@nestjs/common';
+import { ROLE } from '@prisma/client';
 import { ClsService } from 'nestjs-cls';
-import { Observable } from 'rxjs';
+import { SessionService } from 'src/resources/auth/session.service';
 import { MyClsStore } from 'src/types/myClsStore';
 
-@Injectable()
-export class AuthGuard implements CanActivate {
-  constructor(private readonly clsService: ClsService<MyClsStore>) {}
+export function AuthRoleGuard(roles: ROLE[] = []): Type<CanActivate> {
+  @Injectable()
+  class AuthRoleGuardMixin implements CanActivate {
+    constructor(
+      private readonly clsService: ClsService<MyClsStore>,
+      private readonly sessionService: SessionService,
+    ) {}
 
-  canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
-    // First check if user is authenticated
-    if (!this.clsService.get('user.id')) {
-      return false;
+    async canActivate(context: ExecutionContext): Promise<boolean> {
+      try {
+        const userId = this.clsService.get('user.id');
+        if (!userId) {
+          throw new UnauthorizedException('يجب تسجيل الدخول أولاً');
+        }
+
+        // Refresh the session
+        await this.sessionService.refreshSession(this.clsService.get('user.session_id'));
+
+        // If no roles specified, just check authentication
+        if (roles.length === 0) {
+          return true;
+        }
+
+        // Get user role from cls store and check if it matches
+        const userRole = this.clsService.get('user.role');
+        const hasRole = roles.includes(userRole);
+
+        if (!hasRole) {
+          throw new UnauthorizedException(`هذا الإجراء خاص بـ ${roles.join(' أو ')} فقط`);
+        }
+
+        return true;
+      } catch (error) {
+        if (error instanceof UnauthorizedException) {
+          throw error;
+        }
+        // Handle session refresh failure or other errors
+        throw new UnauthorizedException('جلستك انتهت. يرجى تسجيل الدخول مرة أخرى');
+      }
     }
-
-    // ### Enable this code if you want to check for roles ###
-    // // Get the roles from the handler metadata
-    // const requiredRoles = Reflect.getMetadata(ROLES_KEY, context.getHandler()) || [];
-
-    // // If no roles are required, allow access
-    // if (!requiredRoles.length) {
-    //   return true;
-    // }
-
-    // // Get user roles from cls store
-    // const userRoles = this.clsService.get('user.role') || [];
-
-    // // Check if user has any of the required roles
-    // return requiredRoles.some((role) => userRoles.includes(role));
-
-    return true;
   }
+
+  return mixin(AuthRoleGuardMixin);
 }

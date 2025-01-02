@@ -18,11 +18,11 @@ export class ErrorHandler {
       if (!user) return 'No user context available';
 
       return `
-        User Context:
-        ------------------------
-        User ID: ${user.id || 'N/A'}
-        Name: ${user.name || 'N/A'}
-        ------------------------`;
+User Context:
+------------------------
+User ID: ${user.id || 'N/A'}
+Role: ${user.role || 'N/A'}
+------------------------`;
     } catch {
       return 'Failed to retrieve user context';
     }
@@ -66,6 +66,8 @@ Stack: ${error instanceof Error ? error.stack : 'No stack trace available'}
       throw error;
     }
 
+    // send error to telegram
+
     // Handle Prisma errors
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       this.logger.error(this.formatPrismaError(error));
@@ -77,4 +79,3 @@ Stack: ${error instanceof Error ? error.stack : 'No stack trace available'}
     throw new InternalServerErrorException(ErrorMessages.INTERNAL_ERROR);
   }
 }
-

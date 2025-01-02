@@ -8,16 +8,6 @@ import config from 'src/config';
 export class SessionService {
   constructor(private prisma: PrismaService) {}
 
-  private generateSessionToken(): string {
-    return randomBytes(32).toString('hex');
-  }
-
-  private getExpirationDate(): Date {
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
-    return expiresAt;
-  }
-
   setSessionCookie(res: Response, token: string) {
     res.cookie('session_id', token, config.cookies);
   }
@@ -71,24 +61,17 @@ export class SessionService {
 
   async refreshSession(token: string) {
     return await this.prisma.$transaction(async (tx) => {
-      const session = await tx.session.findUnique({
-        where: { token },
-      });
+      const session = await this.findSession(token);
 
       if (!session || session.expiresAt < new Date()) {
         return null;
       }
 
-      await tx.session.delete({
-        where: { token },
-      });
-
-      return await tx.session.create({
+      return await tx.session.update({
         data: {
-          token: this.generateSessionToken(),
-          userId: session.userId,
           expiresAt: this.getExpirationDate(),
         },
+        where: { token },
       });
     });
   }
@@ -96,15 +79,20 @@ export class SessionService {
   async validateSession(token: string) {
     const session = await this.findSession(token);
 
-    if (!session) {
-      return null;
-    }
-
     if (session.expiresAt < new Date()) {
-      await this.deleteSession(token);
       return null;
     }
 
     return session;
+  }
+
+  private generateSessionToken(): string {
+    return randomBytes(32).toString('hex');
+  }
+
+  private getExpirationDate(): Date {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+    return expiresAt;
   }
 }
