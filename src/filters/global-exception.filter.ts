@@ -7,7 +7,7 @@ import { ErrorHandler } from 'src/utils/throwError';
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   constructor(private readonly cls: ClsService<MyClsStore>) {
-    ErrorHandler.initialize(cls);
+    ErrorHandler.initialize(this.cls);
   }
 
   catch(error: unknown, host: ArgumentsHost) {
