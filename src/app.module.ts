@@ -6,15 +6,15 @@ import { config } from './config';
 import { UserModule } from './resources/user/user.module';
 import { AuthModule } from './resources/auth/auth.module';
 import { PrismaModule } from './resources/prisma/prisma.module';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import { GlobalClsModule } from './resources/cls/cls.module';
 import { PROVIDERS } from './providers';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
     ConfigModule.forRoot(config.dotEnv),
     RateLimiter.forRoot(config.rateLimiter),
+    CacheModule.register(config.cache),
     GlobalClsModule,
     PrismaModule,
     AuthModule,

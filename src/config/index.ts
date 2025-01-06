@@ -1,4 +1,5 @@
 import { ClsConfigService } from '../resources/cls/cls.service';
+import { cacheConfig } from './chache';
 import { cookiesConfig } from './cookies';
 import { DotEnvConfig } from './dotenv';
 import { globalPipes } from './globalPipes';
@@ -10,6 +11,7 @@ export const config = {
   rateLimiter: RateLimiterConfig,
   cookies: cookiesConfig,
   globalPipes: globalPipes,
+  cache: cacheConfig,
 };
 
 export default config;

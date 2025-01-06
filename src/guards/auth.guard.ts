@@ -1,55 +1,40 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  UnauthorizedException,
-  Type,
-  mixin,
-} from '@nestjs/common';
+import { Injectable, CanActivate, UnauthorizedException, Type, mixin, ForbiddenException } from '@nestjs/common';
 import { ROLE } from '@prisma/client';
 import { ClsService } from 'nestjs-cls';
-import { SessionService } from 'src/resources/auth/session.service';
 import { MyClsStore } from 'src/types/myClsStore';
 
 export function AuthRoleGuard(roles: ROLE[] = []): Type<CanActivate> {
   @Injectable()
   class AuthRoleGuardMixin implements CanActivate {
-    constructor(
-      private readonly clsService: ClsService<MyClsStore>,
-      private readonly sessionService: SessionService,
-    ) {}
+    constructor(private readonly clsService: ClsService<MyClsStore>) {}
 
-    async canActivate(context: ExecutionContext): Promise<boolean> {
-      try {
-        const userId = this.clsService.get('user.id');
-        if (!userId) {
-          throw new UnauthorizedException('يجب تسجيل الدخول أولاً');
-        }
+    private checkSession = () => {
+      const { user, session } = this.clsService.get();
+      if (!user || !session || session.expiresAt < new Date()) {
+        throw new UnauthorizedException('يجب تسجيل الدخول أولاً');
+      }
+    };
 
-        // Refresh the session
-        await this.sessionService.refreshSession(this.clsService.get('user.session_id'));
-
-        // If no roles specified, just check authentication
-        if (roles.length === 0) {
-          return true;
-        }
-
-        // Get user role from cls store and check if it matches
-        const userRole = this.clsService.get('user.role');
-        const hasRole = roles.includes(userRole);
-
-        if (!hasRole) {
-          throw new UnauthorizedException(`هذا الإجراء خاص بـ ${roles.join(' أو ')} فقط`);
-        }
-
+    private checkRole(): boolean {
+      if (roles.length === 0) {
         return true;
+      }
+
+      const userRole = this.clsService.get('user.role');
+
+      if (!userRole) {
+        throw new ForbiddenException('ليس لديك الصلاحية للوصول إلى هذا المصدر');
+      }
+
+      return true;
+    }
+
+    async canActivate(): Promise<boolean> {
+      try {
+        this.checkSession();
+        return this.checkRole();
       } catch (error) {
-        if (error instanceof UnauthorizedException) {
-          throw error;
-        }
-        // Handle session refresh failure or other errors
-        throw new UnauthorizedException('جلستك انتهت. يرجى تسجيل الدخول مرة أخرى');
+        throw error;
       }
     }
   }

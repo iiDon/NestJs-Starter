@@ -12,16 +12,9 @@ export class SessionService {
     res.cookie('session_id', token, config.cookies);
   }
 
-  clearSessionCookie(res: Response) {
-    const clearCookieOptions = { ...config.cookies };
-    delete clearCookieOptions.expires; // Remove the expires option for clearCookie
-
-    res.clearCookie('session_id', clearCookieOptions);
-  }
-
   async createSession(userId: number) {
     const token = this.generateSessionToken();
-    const expiresAt = this.getExpirationDate();
+    const expiresAt = config.cookies.expires;
 
     const session = await this.prisma.session.create({
       data: {
@@ -36,7 +29,7 @@ export class SessionService {
 
   async findSession(token: string) {
     if (!token) {
-      throw new NotFoundException('Session not found');
+      throw new NotFoundException('لم يتم العثور على الجلسة');
     }
 
     const session = await this.prisma.session.findUnique({
@@ -45,7 +38,7 @@ export class SessionService {
     });
 
     if (!session) {
-      throw new NotFoundException('Session not found');
+      throw new NotFoundException('لم يتم العثور على الجلسة أو انتهت صلاحيتها');
     }
 
     return session;
@@ -59,40 +52,14 @@ export class SessionService {
     });
   }
 
-  async refreshSession(token: string) {
-    return await this.prisma.$transaction(async (tx) => {
-      const session = await this.findSession(token);
+  clearSessionCookie(res: Response) {
+    const clearCookieOptions = { ...config.cookies };
+    delete clearCookieOptions.expires; // Remove the expires option for clearCookie
 
-      if (!session || session.expiresAt < new Date()) {
-        return null;
-      }
-
-      return await tx.session.update({
-        data: {
-          expiresAt: this.getExpirationDate(),
-        },
-        where: { token },
-      });
-    });
-  }
-
-  async validateSession(token: string) {
-    const session = await this.findSession(token);
-
-    if (session.expiresAt < new Date()) {
-      return null;
-    }
-
-    return session;
+    res.clearCookie('session_id', clearCookieOptions);
   }
 
   private generateSessionToken(): string {
     return randomBytes(32).toString('hex');
-  }
-
-  private getExpirationDate(): Date {
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
-    return expiresAt;
   }
 }

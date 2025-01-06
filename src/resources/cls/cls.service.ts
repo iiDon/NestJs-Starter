@@ -2,10 +2,14 @@ import { ClsService, type ClsModuleOptions } from 'nestjs-cls';
 import { MyClsStore } from 'src/types/myClsStore';
 import { Injectable } from '@nestjs/common';
 import { SessionService } from '../auth/session.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ClsConfigService {
-  constructor(private readonly sessionService: SessionService) {}
+  constructor(
+    private readonly sessionService: SessionService,
+    private readonly prismaService: PrismaService,
+  ) {}
 
   createClsConfig(): ClsModuleOptions {
     return {
@@ -13,25 +17,35 @@ export class ClsConfigService {
       middleware: {
         mount: true,
         setup: async (cls: ClsService<MyClsStore>, req) => {
-          try {
-            const sessionId = req.cookies['session_id'];
-            if (!sessionId) {
-              return;
-            }
-
-            const { user } = await this.sessionService.findSession(sessionId);
-            if (user) {
-              cls.set('user', {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                session_id: sessionId,
-              });
-            }
-          } catch (error) {
-            console.error('Error setting up CLS middleware:', error);
+          const sessionId = req.cookies['session_id'];
+          if (!sessionId) {
+            cls.set('user', null);
+            cls.set('session', null);
+            return;
           }
+
+          const session = await this.prismaService.session.findUnique({
+            where: {
+              token: sessionId,
+              expiresAt: {
+                gte: new Date(),
+              },
+            },
+            include: { user: true },
+          });
+
+          cls.set('user', {
+            id: session?.user.id,
+            name: session?.user.name,
+            email: session?.user.email,
+            role: session?.user.role,
+          });
+          cls.set('session', {
+            token: sessionId,
+            expiresAt: session?.expiresAt,
+          });
+
+          return;
         },
       },
     };

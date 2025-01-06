@@ -1,8 +1,10 @@
 import { CookieOptions } from 'express';
 
+// cookiesConfig for setting cookies
 export const cookiesConfig: CookieOptions = {
   httpOnly: true,
-  secure: process.env.ENV === 'production',
-  sameSite: 'strict',
-  expires: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from now (You can set it on .env file)
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7), // 7 days
 };
