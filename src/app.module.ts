@@ -9,30 +9,18 @@ import { PrismaModule } from './resources/prisma/prisma.module';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { GlobalExceptionFilter } from './filters/global-exception.filter';
 import { GlobalClsModule } from './resources/cls/cls.module';
+import { PROVIDERS } from './providers';
 
 @Module({
   imports: [
-    // .env file configuration
     ConfigModule.forRoot(config.dotEnv),
-    // Rate limiter configuration
     RateLimiter.forRoot(config.rateLimiter),
-    // Global modules
     GlobalClsModule,
     PrismaModule,
     AuthModule,
     UserModule,
   ],
-  controllers: [],
-  providers: [
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
-    {
-      provide: APP_FILTER,
-      useClass: GlobalExceptionFilter,
-    },
-  ],
+  providers: PROVIDERS,
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
